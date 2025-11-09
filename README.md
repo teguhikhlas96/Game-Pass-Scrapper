@@ -1,157 +1,180 @@
-# Aplikasi Scraping Website dengan Selenium
+# Xbox Game Pass Games Scraper
 
-Aplikasi scraping website yang lengkap menggunakan Selenium WebDriver dengan Python. Aplikasi ini dapat mengambil berbagai informasi dari website tertentu seperti title, meta description, heading, paragraf, link, dan gambar.
+Script Python menggunakan Selenium untuk scraping semua daftar game dari Xbox Game Pass dengan fitur filtering berdasarkan tahun rilis.
 
-## Fitur
+## Fitur Utama
 
-- ✅ Scraping Title halaman
-- ✅ Scraping Meta Description
-- ✅ Scraping Semua Heading (h1-h6)
-- ✅ Scraping Semua Paragraf
-- ✅ Scraping Semua Link (dengan text dan URL)
-- ✅ Scraping Semua Gambar (dengan src dan alt)
-- ✅ Scraping Semua Text dari body
-- ✅ Penyimpanan hasil ke file JSON
-- ✅ Mode Headless (tanpa membuka browser)
-- ✅ Auto-scroll untuk memuat konten lazy-loaded
+- ✅ **Scraping Lengkap**: Mengambil semua game dari Xbox Game Pass dengan pagination otomatis
+- ✅ **Filter Tahun Rilis**: Opsi untuk hanya mengambil game yang dirilis di tahun tertentu (default: 2025)
+- ✅ **GiantBomb API Integration**: Menggunakan GiantBomb API untuk mendapatkan informasi release date
+- ✅ **Rate Limiting**: Sistem rate limiting otomatis (200 requests/hour) dengan countdown timer
+- ✅ **HTTP 420 Handling**: Auto-retry dengan countdown 1 jam jika mendapat HTTP 420 response
+- ✅ **Caching**: Cache release dates untuk menghindari API calls duplikat
+- ✅ **Auto-Scroll**: Auto-scroll untuk memuat konten dinamis
+- ✅ **Multiple Output Formats**: Menyimpan hasil ke JSON dan CSV
 
 ## Instalasi
 
-1. Pastikan Python 3.7+ sudah terinstall
-2. Install dependencies:
+1. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-Atau jika menggunakan virtual environment:
+2. Pastikan Chrome browser sudah terinstall (ChromeDriver akan diinstall otomatis via webdriver-manager)
+
+## Penggunaan
+
+### Penggunaan Dasar
+
+Jalankan script dengan konfigurasi default:
 ```bash
-# Buat virtual environment
-python3 -m venv .venv
-
-# Aktifkan virtual environment
-source .venv/bin/activate  # Untuk macOS/Linux
-# atau
-.venv\Scripts\activate  # Untuk Windows
-
-# Install dependencies
-pip install -r requirements.txt
+python gamepass_scraper.py
 ```
 
-## Cara Menggunakan
+### Konfigurasi
 
-### 1. Edit Konfigurasi di `app.py`
-
-Buka file `app.py` dan edit bagian konfigurasi di bawah:
+Edit bagian `main()` di `gamepass_scraper.py` untuk mengubah konfigurasi:
 
 ```python
-# Ganti URL di bawah ini dengan website yang ingin di-scrape
-TARGET_URL = "https://example.com"
+# Configuration
+FILTER_2025_ONLY = True  # True = hanya game 2025, False = semua game
 
-# Atau gunakan salah satu contoh di bawah (uncomment salah satu):
-# TARGET_URL = "https://www.python.org"
-# TARGET_URL = "https://github.com"
-# TARGET_URL = "https://news.ycombinator.com"
-
-# Opsi:
-HEADLESS = False  # True untuk menjalankan tanpa membuka browser
-SAVE_TO_FILE = True  # True untuk menyimpan hasil ke file JSON
-```
-
-### 2. Jalankan Aplikasi
-
-```bash
-# Aktifkan virtual environment (jika menggunakan)
-source .venv/bin/activate
-
-# Jalankan aplikasi
-python app.py
-```
-
-### 3. Lihat Hasil
-
-Aplikasi akan menampilkan informasi yang di-scrape di terminal dan menyimpan hasil ke file JSON dengan format:
-- `hasil_scraping_[domain].json`
-
-## Contoh Penggunaan
-
-### Contoh 1: Scraping Website Sederhana
-```python
-hasil = scrape_website(
-    url="https://example.com",
-    headless=False,
-    save_to_file=True
+scraper = GamePassScraper(
+    headless=False,      # True = run tanpa browser window
+    debug=True,          # True = tampilkan log detail
+    filter_2025_only=FILTER_2025_ONLY
 )
 ```
 
-### Contoh 2: Scraping dalam Mode Headless
-```python
-hasil = scrape_website(
-    url="https://www.python.org",
-    headless=True,  # Browser tidak akan terbuka
-    save_to_file=True
-)
+### Opsi Konfigurasi
+
+- **`headless`**: 
+  - `True`: Jalankan browser di background (tanpa window)
+  - `False`: Tampilkan browser window (default)
+
+- **`debug`**: 
+  - `True`: Tampilkan log detail untuk troubleshooting
+  - `False`: Log minimal
+
+- **`filter_2025_only`**: 
+  - `True`: Hanya ambil game yang dirilis di tahun 2025 (menggunakan GiantBomb API)
+  - `False`: Ambil semua game tanpa filter tahun
+
+## Fitur Detail
+
+### 1. Pagination Otomatis
+Script secara otomatis menelusuri semua halaman dengan:
+- Mencari tombol "Next" di pagination
+- Auto-scroll untuk memuat konten lazy-loading
+- Maksimal 100 percobaan untuk memastikan semua halaman ditelusuri
+
+### 2. Filter Release Date (2025)
+Jika `filter_2025_only=True`:
+- Script akan memanggil GiantBomb API untuk setiap game
+- Hanya game dengan release date tahun 2025 yang akan disimpan
+- Release dates di-cache untuk menghindari API calls duplikat
+
+### 3. Rate Limiting
+- **Limit**: 200 requests per jam (sesuai limit GiantBomb API)
+- **Countdown Timer**: Menampilkan countdown saat menunggu rate limit
+- **Auto-resume**: Script otomatis melanjutkan setelah rate limit reset
+
+### 4. HTTP 420 Handling
+Jika mendapat HTTP 420 (Enhance Your Calm):
+- Script akan menunggu 1 jam dengan countdown timer
+- Auto-retry hingga 3 kali jika masih mendapat 420
+- Reset rate limiter setelah menunggu
+- Skip game jika masih gagal setelah 3 retry
+
+### 5. Caching
+- Release dates di-cache di file `release_date_cache.json`
+- Menghindari API calls duplikat untuk game yang sama
+- Cache persist antar session
+
+## Output
+
+Script akan menghasilkan 3 file:
+
+1. **`gamepass_games.json`** - Data dalam format JSON
+   ```json
+   [
+     {
+       "name": "Game Name",
+       "url": "https://www.xbox.com/games/store/...",
+       "release_date": "2025-01-15",
+       "scraped_at": "2025-11-09 10:30:00"
+     }
+   ]
+   ```
+
+2. **`gamepass_games.csv`** - Data dalam format CSV dengan kolom:
+   - `name`: Nama game
+   - `url`: URL game di Xbox Store
+   - `release_date`: Tanggal rilis (jika filter aktif)
+   - `scraped_at`: Waktu scraping
+
+3. **`release_date_cache.json`** - Cache release dates (jika filter aktif)
+
+## Struktur File
+
 ```
-
-### Contoh 3: Scraping Tanpa Menyimpan ke File
-```python
-hasil = scrape_website(
-    url="https://github.com",
-    headless=False,
-    save_to_file=False  # Hanya tampilkan di terminal
-)
-```
-
-## Struktur Hasil Scraping
-
-Hasil scraping disimpan dalam format JSON dengan struktur berikut:
-
-```json
-{
-  "url": "https://example.com",
-  "title": "Example Domain",
-  "meta_description": "Description website",
-  "headings": {
-    "h1": ["Heading 1"],
-    "h2": ["Heading 2", "Heading 2 lainnya"],
-    ...
-  },
-  "paragraphs": ["Paragraf 1", "Paragraf 2", ...],
-  "links": [
-    {"url": "https://example.com/link", "text": "Text Link"},
-    ...
-  ],
-  "images": [
-    {"src": "https://example.com/image.jpg", "alt": "Alt text"},
-    ...
-  ],
-  "all_text": "Semua text dari body..."
-}
+.
+├── gamepass_scraper.py      # Main script
+├── requirements.txt          # Python dependencies
+├── README.md                 # Dokumentasi ini
+├── gamepass_games.json       # Output JSON (generated)
+├── gamepass_games.csv        # Output CSV (generated)
+└── release_date_cache.json   # Cache release dates (generated)
 ```
 
 ## Catatan Penting
 
-1. **Chrome Browser**: Pastikan Google Chrome sudah terinstall di sistem Anda
-2. **ChromeDriver**: Akan di-download otomatis oleh webdriver-manager
-3. **Respect Robots.txt**: Selalu perhatikan robots.txt dan Terms of Service website yang Anda scrape
-4. **Rate Limiting**: Jangan melakukan scraping terlalu sering ke website yang sama
-5. **Legal**: Pastikan Anda memiliki izin untuk scraping website target
+### Rate Limiting
+- GiantBomb API memiliki limit 200 requests per jam
+- Script otomatis mengatur rate limiting dengan delay 2 detik antar request
+- Jika limit tercapai, script akan menunggu dengan countdown timer
 
-## Troubleshooting
+### HTTP 420 Response
+- Jika mendapat HTTP 420, script akan:
+  1. Menampilkan countdown 1 jam
+  2. Reset rate limiter
+  3. Retry request (maksimal 3 kali)
+  4. Skip game jika masih gagal
 
-### Error: ChromeDriver tidak ditemukan
-- Pastikan Google Chrome terinstall
-- webdriver-manager akan mengunduh ChromeDriver otomatis
+### Waktu Eksekusi
+- Scraping semua game: ~5-15 menit (tergantung jumlah game)
+- Dengan filter 2025: ~30-60 menit (karena API calls untuk setiap game)
+- Jika rate limit tercapai: +1 jam per 200 requests
 
-### Error: Timeout
-- Periksa koneksi internet
-- Beberapa website mungkin memerlukan waktu loading lebih lama
-- Coba tambah timeout di `WebDriverWait(driver, 15)`
+### Troubleshooting
 
-### Error: Element tidak ditemukan
-- Website mungkin menggunakan JavaScript untuk render konten
-- Aplikasi sudah menggunakan wait dan scroll untuk mengatasi ini
-- Jika masih error, website mungkin menggunakan iframe atau konten yang terlindungi
+**Script tidak mengambil semua game:**
+- Pastikan koneksi internet stabil
+- Cek apakah ada error di console
+- Coba jalankan dengan `debug=True` untuk melihat log detail
+
+**HTTP 420 terus muncul:**
+- Tunggu beberapa jam sebelum menjalankan lagi
+- Pastikan tidak ada instance script lain yang berjalan
+- Cek apakah API key valid
+
+**Browser tidak terbuka:**
+- Pastikan Chrome browser terinstall
+- Cek apakah ChromeDriver terinstall dengan benar
+- Coba set `headless=False` untuk melihat browser
+
+## Dependencies
+
+- `selenium` - Web scraping
+- `webdriver-manager` - Auto-manage ChromeDriver
+- `requests` - HTTP requests untuk GiantBomb API
+- `json` - JSON handling
+- `csv` - CSV handling
 
 ## Lisensi
 
-Project ini dibuat untuk keperluan edukasi dan contoh penggunaan.
+Script ini dibuat untuk keperluan personal/educational. Pastikan untuk menghormati Terms of Service dari Xbox.com dan GiantBomb API.
+
+## Kontribusi
+
+Jika menemukan bug atau ingin menambahkan fitur, silakan buat issue atau pull request.
